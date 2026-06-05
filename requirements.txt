@@ -1,0 +1,12 @@
+# Web 框架（替换 Streamlit，适配 Vercel Serverless）
+flask>=3.0.0
+# 网络请求库
+requests>=2.31.0
+# HTML解析库
+beautifulsoup4>=4.12.3
+# 中文分词库
+jieba>=0.42.1
+# 数据可视化库
+pyecharts>=2.0.4
+# 编码自动检测
+chardet>=5.0.0

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本词频分析工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f2f6;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1f3a5f 0%, #2d5f8a 100%);
+            color: white;
+            padding: 24px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header p { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 18px; font-weight: 600; color: #1f3a5f;
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 2px solid #e8ecf1;
+        }
+        .form-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 13px; font-weight: 500; color: #555; }
+        .form-group input, .form-group select {
+            padding: 10px 14px; border: 1.5px solid #dce1e8;
+            border-radius: 8px; font-size: 14px; transition: border 0.2s;
+            background: #fafbfc; min-width: 200px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none; border-color: #2d5f8a; background: white;
+        }
+        .form-group input { width: 420px; }
+        .form-group input[type="range"] { width: 180px; padding: 6px 0; border: none; background: transparent; }
+        .slider-val { display: inline-block; margin-left: 10px; font-weight: 600; color: #2d5f8a; min-width: 20px; }
+        .btn {
+            padding: 10px 28px; background: linear-gradient(135deg, #2d5f8a 0%, #1f3a5f 100%);
+            color: white; border: none; border-radius: 8px; font-size: 15px;
+            font-weight: 500; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+            height: 42px;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(45,95,138,0.35); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        table {
+            width: 100%; border-collapse: collapse; font-size: 14px;
+        }
+        table th { background: #f5f7fa; padding: 12px 16px; text-align: left; font-weight: 600; color: #444;
+            border-bottom: 2px solid #dce1e8; }
+        table td { padding: 10px 16px; border-bottom: 1px solid #eef1f5; }
+        table tr:hover td { background: #fafbfc; }
+        .rank { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center;
+            border-radius: 50%; font-size: 12px; font-weight: 700; color: white;
+            background: #94a3b8; }
+        .rank.top3 { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+
+        .chart-container { width: 100%; min-height: 620px; border-radius: 8px; overflow: hidden; }
+
+        .error-msg { background: #fef2f2; color: #dc2626; padding: 12px 18px; border-radius: 8px;
+            border-left: 4px solid #dc2626; margin-bottom: 16px; font-size: 14px; }
+        .info-msg { background: #eff6ff; color: #1d4ed8; padding: 12px 18px; border-radius: 8px;
+            border-left: 4px solid #1d4ed8; margin-bottom: 16px; font-size: 14px; }
+
+        .spinner {
+            display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite;
+            vertical-align: middle; margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .header { padding: 16px 20px; }
+            .header h1 { font-size: 20px; }
+            .container { padding: 16px 12px; }
+            .card { padding: 20px 16px; }
+            .form-group input { width: 100%; }
+            .form-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 文本词频分析工具</h1>
+        <p>输入文章 URL，一键抓取、分词、可视化</p>
+    </div>
+
+    <div class="container">
+        <!-- 配置表单 -->
+        <div class="card">
+            <div class="card-title">⚙️ 分析配置</div>
+            <form method="POST" id="analysis-form" onsubmit="showLoading()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="url">文章 URL</label>
+                        <input type="text" id="url" name="url" required
+                               placeholder="例：https://www.ruiwen.com/wenxue/zhuziqing/46691.html"
+                               value="{{ url or '' }}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="min_freq">最低词频阈值: <span class="slider-val" id="freq-display">{{ min_freq }}</span></label>
+                        <input type="range" id="min_freq" name="min_freq" min="1" max="10"
+                               value="{{ min_freq }}" oninput="document.getElementById('freq-display').textContent=this.value">
+                    </div>
+                    <div class="form-group">
+                        <label for="chart_type">选择图表类型</label>
+                        <select id="chart_type" name="chart_type">
+                            {% for ct in chart_types %}
+                            <option value="{{ ct }}" {% if ct == chart_type %}selected{% endif %}>{{ ct }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn" id="submit-btn">开始分析</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 错误/提示信息 -->
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+        {% if info %}
+        <div class="info-msg">{{ info }}</div>
+        {% endif %}
+
+        <!-- Top20 结果 -->
+        {% if top20 %}
+        <div class="card">
+            <div class="card-title">🏆 词频排名前 20 词汇</div>
+            <table>
+                <thead>
+                    <tr><th>排名</th><th>词汇</th><th>词频</th></tr>
+                </thead>
+                <tbody>
+                    {% for idx, (word, freq) in enumerate(top20, 1) %}
+                    <tr>
+                        <td>
+                            <span class="rank {{ 'top3' if idx <= 3 else '' }}">{{ idx }}</span>
+                        </td>
+                        <td><strong>{{ word }}</strong></td>
+                        <td>{{ freq }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- 图表 -->
+        {% if chart_html %}
+        <div class="card">
+            <div class="card-title">📈 词频可视化 — {{ chart_type }}</div>
+            <div class="chart-container">{{ chart_html | safe }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function showLoading() {
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>分析中...';
+        }
+    </script>
+</body>
+</html>
