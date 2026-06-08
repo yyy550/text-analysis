@@ -15,7 +15,8 @@ from pyecharts import options as opts
 from pyecharts.globals import ThemeType
 
 # 模板目录指向项目根目录下的 templates/（兼容本地 + Vercel 两种运行环境）
-app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), "..", "templates"))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "..", "templates"))
 
 # ---- 内置停用词 ----
 STOPWORDS = {
