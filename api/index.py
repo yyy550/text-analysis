@@ -14,6 +14,9 @@ from pyecharts.charts import WordCloud, Bar, Line, Pie, Funnel, Radar, Scatter, 
 from pyecharts import options as opts
 from pyecharts.globals import ThemeType
 
+# ---- 预加载 jieba 词典（在模块导入时完成，避免首次请求超时） ----
+jieba.initialize()
+
 # 模板目录指向项目根目录下的 templates/（兼容本地 + Vercel 两种运行环境）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "..", "templates"))
@@ -53,7 +56,7 @@ def fetch_text_from_url(url):
             "Referer": url,
             "Accept-Language": "zh-CN,zh;q=0.9"
         }
-        response = requests.get(url, headers=headers, timeout=15)
+        response = requests.get(url, headers=headers, timeout=8)
         if response.status_code != 200:
             return None, f"请求失败，状态码：{response.status_code}"
 
